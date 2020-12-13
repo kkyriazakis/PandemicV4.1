@@ -14,7 +14,7 @@ public class Client
     final static int ServerPort = 64240;
     final static String username = "myName";
 
-    public static void main(String args[]) throws UnknownHostException, IOException, ClassNotFoundException
+    public static void main(String[] args) throws UnknownHostException, IOException, ClassNotFoundException
     { 
     	int numberOfPlayers;
     	int myPlayerID;
@@ -53,274 +53,260 @@ public class Client
         Board[] currentBoard = {new Board(numberOfPlayers)};
         
         // Creating sendMessage thread 
-        Thread sendMessage = new Thread(new Runnable()  
-        { 
+        Thread sendMessage = new Thread(new Runnable()
+        {
             @Override
             public void run() {
-            	
+
             	boolean timeToTalk = false;
-            	
+
             	//MPOREI NA GINEI WHILE  TRUE ME BREAK GIA SINTHIKI??
-                while (currentBoard[0].getGameEnded() == false) 
-                { 	
+                while (currentBoard[0].getGameEnded() == false)
+                {
                 	timeToTalk = ((currentBoard[0].getWhoIsTalking() == myPlayerID)  && !currentBoard[0].getTalkedForThisTurn(myPlayerID));
-                	
+
                 	try {
 						TimeUnit.MILLISECONDS.sleep(15);
 					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
 						e1.printStackTrace();
 					}
-                	
-                    try { 
+
+                    try {
                         // Executing this part of the code once per round
                         if (timeToTalk)
                         {
-                        	
+
                         	// Initializing variables for current round
-                        	
+
                         	Board myBoard = currentBoard[0];
-                        	
+
                         	String myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                         	City myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
-                        	
+
                         	ArrayList<String> myHand = myBoard.getHandOf(myPlayerID);
-                        	
+
                         	int[] myColorCount = {0, 0, 0, 0};
-                        	
+
                         	for (int i = 0 ; i < 4 ; i++)
                         		myColorCount[i] =  cardsCounterOfColor(myBoard, myPlayerID, myBoard.getColors(i));
-                        	
+
                         	ArrayList<citiesWithDistancesObj> distanceMap = new ArrayList<citiesWithDistancesObj>();
                         	distanceMap = buildDistanceMap(myBoard, myCurrentCity, distanceMap);
-                        	
-                        	
-                        	String myAction = "";
+
+
+                        	StringBuilder myAction = new StringBuilder();
                         	String mySuggestion = "";
-                        	
+
                         	int myActionCounter = 0;
-                        	
+
                         	// Printing out my current hand
                         	System.out.println("\nMy current hand...");
                         	printHand(myHand);
-                        	
+
                         	// Printing out current color count
                         	System.out.println("\nMy hand's color count...");
                         	for (int i = 0 ; i < 4 ; i++)
                         		System.out.println(myBoard.getColors(i) + " cards count: " + myColorCount[i]);
-                        	
+
                         	// Printing out distance map from current city
                         	//System.out.println("\nDistance map from " + myCurrentCity);
                         	//printDistanceMap(distanceMap);
-                        	
-                        	// ADD YOUR CODE FROM HERE AND ON!! 
-                        	
+
+                        	// ADD YOUR CODE FROM HERE AND ON!!
+
+							ArrayList<Board> CHILDREN = getPossibleMoves(myPlayerID, myBoard);
+							for (int i=0; i<CHILDREN.size(); i++){
+								int val = evaluatePosition(myPlayerID, CHILDREN.get(i));
+								System.out.println(i+ ". At City(" +CHILDREN.get(i).getPawnsLocations(myPlayerID)+ ") Evaluation("+ val +")");
+							}
+
+
                         	boolean tryToCure = false;
                         	String colorToCure = null;
-                        	
+
                         	boolean tryToTreatHere = false;
-                        	String colorToTreat = null;
-                        	
+                        	String colorToTreat;
+
                         	boolean tryToTreatClose = false;
                         	String destinationClose = null;
-                        	
+
                         	boolean tryToTreatMedium = false;
                         	String destinationMedium = null;
-                        	
-                        	String destinationRandom = null;
-                        	
-                        	if (myColorCount[0] > 4 || myColorCount[1] > 4 || myColorCount[2] > 4 || myColorCount[3] > 4)
-                        	{
-                        		if (myActionCounter < 4)
-                        			tryToCure = true;
-                        		
+
+                        	if (myColorCount[0] > 4 || myColorCount[1] > 4 || myColorCount[2] > 4 || myColorCount[3] > 4) {
+								tryToCure = true;
+
                         		if (myColorCount[0] > 4)
                         			colorToCure = "Black";
                         		else if (myColorCount[1] > 4)
                         			colorToCure = "Yellow";
                         		else if (myColorCount[2] > 4)
                         			colorToCure = "Blue";
-                        		else if (myColorCount[3] > 4)
-                        			colorToCure = "Red";
+                        		else colorToCure = "Red";
                         	}
-                        	
+
                         	if (tryToCure)
                         	{
                         		System.out.println("I want to try and cure the " + colorToCure + " disease!");
-                        		myAction = myAction + toTextCureDisease(myPlayerID, colorToCure);
+                        		myAction.append(toTextCureDisease(myPlayerID, colorToCure));
                         		myBoard.cureDisease(myPlayerID, colorToCure);
                         		myActionCounter++;
-                        		
+
                         	}
-                        	
-                        	if (myCurrentCityObj.getBlackCubes() != 0 || myCurrentCityObj.getYellowCubes() != 0  || myCurrentCityObj.getBlueCubes() != 0  || myCurrentCityObj.getRedCubes() != 0)
-                        	{
+
+                        	if (myCurrentCityObj.getBlackCubes() != 0 || myCurrentCityObj.getYellowCubes() != 0  || myCurrentCityObj.getBlueCubes() != 0  || myCurrentCityObj.getRedCubes() != 0) {
                         		if (myActionCounter < 4)
                         			tryToTreatHere = true;
-                        		
-                        		if (myCurrentCityObj.getBlackCubes() > 0)
-                        			colorToTreat = "Black";
-                        		else if ( myCurrentCityObj.getYellowCubes() > 0)
-                        			colorToTreat = "Yellow";
-                        		else if (myCurrentCityObj.getBlueCubes() > 0)
-                        			colorToTreat = "Blue";
-                        		else if (myCurrentCityObj.getRedCubes() > 0)
-                        			colorToTreat = "Red";
                         	}
-                        	
-                        	if (tryToTreatHere) 
-                        	{
-                        		while (myCurrentCityObj.getMaxCube() != 0 && myActionCounter < 4)
-                        		{
+
+                        	if (tryToTreatHere) {
+                        		while (myCurrentCityObj.getMaxCube() != 0 && myActionCounter < 4) {
                         			colorToTreat = myCurrentCityObj.getMaxCubeColor();
-                    				
+
                     				System.out.println("I want to try and treat one " + colorToTreat + " cube from " + myCurrentCity + "!");
-                    				
-                    				myAction = myAction + toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat);
+
+                    				myAction.append(toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat));
                             		myActionCounter++;
-                            		
+
                             		myBoard.treatDisease(myPlayerID, myCurrentCity, colorToTreat);
                         		}
                         	}
-                        	
+
                         	if (myActionCounter < 4 )
                         	{
                         		destinationClose = getMostInfectedInRadius(1, distanceMap, myBoard);
-                        		
+
                         		if(!destinationClose.equals(myCurrentCity))
                         			tryToTreatClose = true;
                     		}
-                        	
+
                         	if (tryToTreatClose)
                         	{
                         		System.out.println("Hhhmmmmmm I could go and try to treat " + destinationClose);
-                        		
-                        		myAction = myAction + toTextDriveTo(myPlayerID, destinationClose);
+
+                        		myAction.append(toTextDriveTo(myPlayerID, destinationClose));
                         		myActionCounter++;
-                        		
+
                         		myBoard.driveTo(myPlayerID, destinationClose);
-                        		
+
                         		myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                             	myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
-                        		
-                        		while (myCurrentCityObj.getMaxCube() != 0 && myActionCounter < 4)
-                        		{
+
+                        		while (myCurrentCityObj.getMaxCube() != 0 && myActionCounter < 4) {
                         			colorToTreat = myCurrentCityObj.getMaxCubeColor();
-                    				
+
                     				System.out.println("I want to try and treat one " + colorToTreat + " cube from " + myCurrentCity + "!");
-                    				
-                    				myAction = myAction + toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat);
+
+                    				myAction.append(toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat));
                             		myActionCounter++;
-                            		
+
                             		myBoard.treatDisease(myPlayerID, myCurrentCity, colorToTreat);
                         		}
                         	}
-                        	
-                        	
+
+
                         	if (myActionCounter < 4 )
                         	{
                         		destinationMedium = getMostInfectedInRadius(2, distanceMap, myBoard);
-                        		
+
                         		if(!destinationMedium.equals(myCurrentCity))
                         			tryToTreatMedium = true;
                     		}
-                        	
+
                         	if (tryToTreatMedium)
                         	{
                         		System.out.println("Hhhmmmmmm I could go and try to treat " + destinationMedium);
-                        		
+
                         		String driveFirstTo = getDirectionToMove(myCurrentCity, destinationMedium, distanceMap, myBoard);
-                        		
-                        		myAction = myAction + toTextDriveTo(myPlayerID, driveFirstTo);
+
+                        		myAction.append(toTextDriveTo(myPlayerID, driveFirstTo));
                         		myActionCounter++;
-                        		myAction = myAction + toTextDriveTo(myPlayerID, destinationMedium);
+                        		myAction.append(toTextDriveTo(myPlayerID, destinationMedium));
                         		myActionCounter++;
-                        		
+
                         		myBoard.driveTo(myPlayerID, driveFirstTo);
-                        		
+
                         		myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                             	myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
-                        		
+
                         		myBoard.driveTo(myPlayerID, destinationMedium);
-                        		
+
                         		myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                             	myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
-                        		
+
                         		while (myCurrentCityObj.getMaxCube() != 0 && myActionCounter < 4)
                         		{
                         			colorToTreat = myCurrentCityObj.getMaxCubeColor();
-                    				
+
                     				System.out.println("I want to try and treat one " + colorToTreat + " cube from " + myCurrentCity + "!");
-                    				
-                    				myAction = myAction + toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat);
+
+                    				myAction.append(toTextTreatDisease(myPlayerID, myCurrentCity, colorToTreat));
                             		myActionCounter++;
-                            		
+
                             		myBoard.treatDisease(myPlayerID, myCurrentCity, colorToTreat);
                         		}
                         	}
-                        	
+
                         	Random rand = new Random();
-                        	
+
                         	while (myActionCounter < 4)
                         	{
                         		int upperBound;
                         		int randomNumber;
                         		String randomCityToGo;
-                        		
+
                         		upperBound = myCurrentCityObj.getNeighboursNumber();
                         		randomNumber = rand.nextInt(upperBound);
                         		randomCityToGo = myCurrentCityObj.getNeighbour(randomNumber);
-                        		
+
                         		System.out.println("Moving randomly to " + randomCityToGo);
-                        		
-                        		myAction = myAction + toTextDriveTo(myPlayerID, randomCityToGo);
+
+                        		myAction.append(toTextDriveTo(myPlayerID, randomCityToGo));
                         		myActionCounter++;
-                        		
+
                         		myBoard.driveTo(myPlayerID, randomCityToGo);
-                        		
+
                         		myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                             	myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
                     		}
-                        	
-                        	
+
+
                         	// UP TO HERE!! DON'T FORGET TO EDIT THE "msgToSend"
-                        	
-                        	// Message type 
+
+                        	// Message type
                         	// toTextShuttleFlight(0,Atlanta)+"#"+etc
                         	String msgToSend;
                         	if (myBoard.getWhoIsPlaying() == myPlayerID)
-                        		msgToSend = myAction;
-                        		
+                        		msgToSend = myAction.toString();
+
                         		//msgToSend = "AP,"+myPlayerID+"#AP,"+myPlayerID+"#AP,"+myPlayerID+"#C,"+myPlayerID+",This was my action#AP,"+myPlayerID+"#C,"+myPlayerID+",This should not be printed..";//"Action";
-                            else 
+                            else
                         		msgToSend = "#C,"+myPlayerID+",This was my recommendation"; //"Recommendation"
-                        	
+
                         	// NO EDIT FROM HERE AND ON (EXEPT FUNCTIONS OUTSIDE OF MAIN() OF COURSE)
-                        	
+
                         	// Writing to Server
                         	dos.flush();
                         	dos.reset();
-                        	if (msgToSend != "")
+                        	if (!msgToSend.equals(""))
                         		msgToSend = msgToSend.substring(1); // Removing the initial delimeter
                         	dos.writeObject(msgToSend);
                         	System.out.println(myUsername + " : I've just sent my " + msgToSend);
                         	currentBoard[0].setTalkedForThisTurn(true, myPlayerID);
                         }
-                    } catch (IOException e) { 
-                        e.printStackTrace(); 
+                    } catch (IOException e) {
+                        e.printStackTrace();
 					}
-                } 
-            } 
+                }
+            }
         });
 
         // Creating readMessage thread
         Thread readMessage = new Thread(new Runnable()  
         { 
             @Override
-            public void run() { 
-            	
-            	
-                while (currentBoard[0].getGameEnded() == false) { 
+            public void run() {
+                while (!currentBoard[0].getGameEnded()) {
                     try { 
                         
                     	// Reading the current board
@@ -338,12 +324,10 @@ public class Client
                     	if (!prtToScreen.equalsIgnoreCase(""))
                     		System.out.println(prtToScreen);
                     	
-                    } catch (IOException e) { 
+                    } catch (IOException | ClassNotFoundException e) {
                         e.printStackTrace(); 
-                    } catch (ClassNotFoundException e) {
-						e.printStackTrace();
-					} 
-                } 
+                    }
+				}
             } 
         }); 
         
@@ -354,7 +338,7 @@ public class Client
         // Checking if the game has ended
         while (true) 
         {
-        	if (currentBoard[0].getGameEnded() == true) {
+        	if (currentBoard[0].getGameEnded()) {
         		System.out.println("\nGame has finished. Closing resources.. \n");
         		//scn.close();
             	s.close();
@@ -367,7 +351,7 @@ public class Client
     }
 
 	// ============================== OUR FUNCTIONS ==============================
-	public static int EvaluatePosition(int playerID, Board CurrentBoard) {
+	public static int evaluatePosition(int playerID, Board CurrentBoard) {
 		int score = 0;
 		int cubeProtectionScale = 5;
 
@@ -431,12 +415,10 @@ public class Client
 
 
 	public static ArrayList<Board> getPossibleMoves(int playerID, Board CurrentBoard) {
-		Board tempBoard = copyBoard(CurrentBoard);
-		assert tempBoard != null;
-
+		Board tempBoard;
+		String PrevActions = CurrentBoard.getActions(playerID);
 		ArrayList<Board> Moves = new ArrayList<>();
 		ArrayList<String> CitiesAdded = new ArrayList<>();
-		String Action;
 
 		//ADD ALL NEIGHBOURS ADD AS: DriveTo
 		String myCurrentCity = CurrentBoard.getPawnsLocations(playerID);
@@ -449,6 +431,7 @@ public class Client
 			tempBoard = copyBoard(CurrentBoard);
 			assert tempBoard != null;
 			tempBoard.driveTo(playerID, CityToGo);
+			tempBoard.setActions(PrevActions+toTextDriveTo(playerID, CityToGo), playerID);
 			Moves.add(tempBoard);
 		}
 
@@ -459,8 +442,8 @@ public class Client
 				tempBoard = copyBoard(CurrentBoard);
 				assert tempBoard != null;
 				tempBoard.shuttleFlight(playerID, CityWithRS);
+				tempBoard.setActions(PrevActions+toTextShuttleFlight(playerID, CityWithRS), playerID);
 				CitiesAdded.add(CityWithRS);
-
 				Moves.add(tempBoard);
 			}
 		}
@@ -476,6 +459,7 @@ public class Client
 				tempBoard = copyBoard(CurrentBoard);
 				assert tempBoard != null;
 				tempBoard.directFlight(playerID, CityToGo);
+				tempBoard.setActions(PrevActions+toTextDirectFlight(playerID, CityToGo), playerID);
 				CitiesAdded.add(CityToGo);
 				Moves.add(tempBoard);
 			}
@@ -487,6 +471,7 @@ public class Client
 				tempBoard = copyBoard(CurrentBoard);
 				assert tempBoard != null;
 				tempBoard.buildRS(playerID, myCurrentCity);
+				tempBoard.setActions(PrevActions+toTextBuildRS(playerID, myCurrentCity), playerID);
 				Moves.add(tempBoard);
 			}
 		}
@@ -501,30 +486,33 @@ public class Client
 				if(!myCurrentCity.equals(BestRSlocations[i]) & !cityToGo.getHasReseachStation()){
 					tempBoard = copyBoard(CurrentBoard);
 					assert tempBoard != null;
-					tempBoard.operationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0));
-					Moves.add(tempBoard);
+					//tempBoard.operationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0));
+					//tempBoard.setActions(PrevActions+toTextoperationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0)), playerID);
+					//Moves.add(tempBoard);
 				}
 			}
 			//ADD CITIES WITH 3 CUBES
 			for(int i=0; i<CurrentBoard.getCitiesCount(); i++) {
-				City cityToGo = tempBoard.searchForCity(i);
+				City cityToGo = CurrentBoard.searchForCity(i);
 				if (cityToGo.getMaxCube() == 3) {
 					tempBoard = copyBoard(CurrentBoard);
 					assert tempBoard != null;
-					tempBoard.operationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0));
-					Moves.add(tempBoard);
+					//tempBoard.operationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0));
+					//tempBoard.setActions(PrevActions+toTextoperationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0)), playerID);
+					//Moves.add(tempBoard);
 				}
 			}
 		}
 
-		//FOR CARD(==Current_City) BEST CITIES TO GO TO
+		//FOR CARD(==Current_City) BEST CITIES TO GO TO: charterFlight
 		if (currentCityAtHand) {
 			for (int i = 0; i < CurrentBoard.getCitiesCount(); i++) {
-				City tempCity = tempBoard.searchForCity(i);
+				City tempCity = CurrentBoard.searchForCity(i);
 				if (tempCity.getMaxCube() == 3 | tempCity.getHasReseachStation()) {
 					tempBoard = copyBoard(CurrentBoard);
 					assert tempBoard != null;
-					tempBoard.shuttleFlight(playerID, tempCity.getName());
+					tempBoard.charterFlight(playerID, tempCity.getName());
+					tempBoard.setActions(PrevActions+toTextCharterFlight(playerID, myCurrentCity), playerID);
 					Moves.add(tempBoard);
 				}
 			}
@@ -534,15 +522,17 @@ public class Client
 		tempBoard = copyBoard(CurrentBoard);
 		assert tempBoard != null;
 		if(tempBoard.cureDisease(playerID, myCurrentCityObj.getColour())){
+			tempBoard.setActions(PrevActions+toTextCureDisease(playerID, myCurrentCityObj.getColour()), playerID);
 			Moves.add(tempBoard);
 		}
-
 
 		//TREAT A DISEASE
 		tempBoard = copyBoard(CurrentBoard);
 		assert tempBoard != null;
-		tempBoard.treatDisease(playerID, myCurrentCity, myCurrentCityObj.getColour());
-		Moves.add(tempBoard);
+		if(tempBoard.treatDisease(playerID, myCurrentCity, myCurrentCityObj.getColour())){
+			tempBoard.setActions(PrevActions+toTextTreatDisease(playerID, myCurrentCity, myCurrentCityObj.getColour()), playerID);
+			Moves.add(tempBoard);
+		}
 
 		return Moves;
 	}
@@ -578,7 +568,7 @@ public class Client
     	City startingCityObj = myBoard.searchForCity(startingCity);
     	
     	int minDistance = distanceFrom(goalCity, distanceMap);
-    	int testDistance = 999;
+    	int testDistance;
     	
     	String directionToDrive = null;
     	String testCity = null;

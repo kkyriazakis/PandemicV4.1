@@ -761,7 +761,7 @@ public class Board implements Serializable{
 		}
 	}
 	
-	// Shuttle flight to desired city
+	// Shuttle flight to desired city RS->RS
 	public boolean shuttleFlight(int playerID, String destination)
 	{
 		boolean isLegal = false;
