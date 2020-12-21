@@ -197,7 +197,7 @@ public class Server
 					myBoard.setRound(myBoard.getRound()+1);
 				}	
 			}
-			
+
 			System.out.println("\nPrinting actions of all players...");
 			
 			for (int i = 0 ; i < activePlayers ; i++)
