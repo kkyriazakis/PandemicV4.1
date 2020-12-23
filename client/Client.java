@@ -81,6 +81,10 @@ public class Client
 
                         	Board myBoard = copyBoard(currentBoard[0]);
 
+							if (currentBoard[0].getGameEnded()) {
+								System.exit(0);
+							}
+
                         	String myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                         	City myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
 
@@ -118,37 +122,13 @@ public class Client
 							String finalMove = "";
 							if (myBoard.getWhoIsPlaying() == myPlayerID) {
 								myBoard.setActions("", myPlayerID);
-								Board bestBoard = bestFourMovesPruned(myPlayerID, myBoard, 1);
+								Board bestBoard = bestFourMovesLookAhead(myPlayerID, myBoard, 1);
 								finalMove = bestBoard.getActions(myPlayerID);
 
-								System.out.println("===========================================");
-								System.out.println(finalMove);
-								System.out.println("===========================================");
+
 								myBoard = copyBoard(bestBoard);
 							}
-				/*
 
-                        	Random rand = new Random();
-                        	while (myActionCounter < 4) {
-                        		int upperBound;
-                        		int randomNumber;
-                        		String randomCityToGo;
-
-                        		upperBound = myCurrentCityObj.getNeighboursNumber();
-                        		randomNumber = rand.nextInt(upperBound);
-                        		randomCityToGo = myCurrentCityObj.getNeighbour(randomNumber);
-
-                        		System.out.println("Moving randomly to " + randomCityToGo);
-
-                        		myAction.append(toTextDriveTo(myPlayerID, randomCityToGo));
-                        		myActionCounter++;
-
-                        		myBoard.driveTo(myPlayerID, randomCityToGo);
-
-                        		myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
-                            	myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
-                    		}
-				*/
 
                         	// UP TO HERE!! DON'T FORGET TO EDIT THE "msgToSend"
 
@@ -259,6 +239,7 @@ public class Client
 		assert temp != null;
 		ArrayList<Board> children = getPossibleMoves(myPlayerID, temp);
 		int children_size = children.size();
+
 		int[] childScores = new int[children_size];
 		Board[] children_new = new Board[children_size];
 
@@ -291,13 +272,47 @@ public class Client
 		int children_size = children.size();
 
 		ArrayList<Board> sorted = sortPossibleMoves(children);
-		int sorted_size = children_size/3;
+		int sorted_size = children_size/(5-depth);
 
 		int[] childScores = new int[sorted_size];
 		Board[] children_new = new Board[sorted_size];
 
 		for (int i=0; i<sorted_size; i++){
-			Board child = bestFourMoves(myPlayerID, sorted.get(i), depth+1);
+			Board child = bestFourMovesPruned(myPlayerID, sorted.get(i), depth+1);
+			childScores[i] = evaluatePosition(myPlayerID, child);
+			children_new[i] = copyBoard(child);
+		}
+
+		int max = Integer.MIN_VALUE;
+		Board best_child = null;
+		for (int i=0; i<sorted_size; i++){
+			if( childScores[i] >= max ){
+				max = childScores[i];
+				best_child = children_new[i];
+			}
+		}
+
+		return best_child;
+	}
+
+	public static Board bestFourMovesLookAhead(int myPlayerID, Board currBoard, int depth){
+		if (depth == 4 | currBoard.checkIfWon()){
+			return copyBoard(currBoard);
+		}
+
+		Board temp = copyBoard(currBoard);
+		assert temp != null;
+		ArrayList<Board> children = getPossibleMoves(myPlayerID, temp);
+		int children_size = children.size();
+
+		ArrayList<Board> sorted = sortPossibleMovesLookAhead(children);
+		int sorted_size = children_size/(4-depth);
+
+		int[] childScores = new int[sorted_size];
+		Board[] children_new = new Board[sorted_size];
+
+		for (int i=0; i<sorted_size; i++){
+			Board child = bestFourMovesLookAhead(myPlayerID, sorted.get(i), depth+1);
 			childScores[i] = evaluatePosition(myPlayerID, child);
 			children_new[i] = copyBoard(child);
 		}
@@ -317,7 +332,6 @@ public class Client
 	public static int evaluatePosition(int playerID, Board CurrentBoard) {
 		int score = 0;
 		int cubeProtectionScale = 10;
-		int cardsNeedForCure = 4;
 
 		score += 4 - (CurrentBoard.getInfectionRate()); //Infection rate
 
@@ -339,7 +353,6 @@ public class Client
 				cubeProtectionScale = 40;
 				break;
 			case "Scientist":
-				cardsNeedForCure = 3;
 				cubeProtectionScale = 3;
 				break;
 		}
@@ -347,8 +360,12 @@ public class Client
 		String[] colors = {"Black", "Yellow", "Blue", "Red"};
 		for (int i=0; i<4; i++) {
 			//ADD BONUS BASED ON MY CARDS
-			if(cardsCounterOfColor(CurrentBoard, playerID, colors[i]) >= cardsNeedForCure){
-				score += 70;
+			int cards = cardsCounterOfColor(CurrentBoard, playerID, colors[i]);
+			if(cards == 2){
+				score += 240;
+			}
+			else if(cards > 2){
+				score += 450;
 			}
 			score += CurrentBoard.getCubesLeft(i);
 		}
@@ -362,24 +379,38 @@ public class Client
 		String myCurrentCity = CurrentBoard.getPawnsLocations(playerID);
 		City myCurrentCityObj = CurrentBoard.searchForCity(myCurrentCity);
 		int NeighbourCount = myCurrentCityObj.getNeighboursNumber();
+		int NearbyPawns = 0;
 		//Current City Cube Count
 		score += cubeProtectionScale * CurrentBoard.searchForCity(myCurrentCity).getMaxCube();
 
+		for(int n=0; n<3; n++){
+			if(n!=playerID & CurrentBoard.getPawnsLocations(n).equals(myCurrentCity)){
+				NearbyPawns++;
+			}
+		}
 
 		//Nearby Cities Cube Count
 		for (int i=0; i<NeighbourCount; i++) {
 			String NeighbourName = myCurrentCityObj.getNeighbour(i);
 			City NeighbourCity = CurrentBoard.searchForCity(NeighbourName);
 			score += cubeProtectionScale * NeighbourCity.getMaxCube();
+			for(int n=0; n<3; n++){
+				if(n!=playerID & CurrentBoard.getPawnsLocations(n).equals(NeighbourName)){
+					NearbyPawns++;
+				}
+			}
 		}
 
+		//Gets penalty if too close to other players
+		score -= NearbyPawns*45;
+
 		//Research stations built
-		score += CurrentBoard.getResearchStationsBuild()*20;
+		score += (CurrentBoard.getResearchStationsBuild()-1)*500;
 
 		//CURED DISEASES
 		for(int i=0; i<4; i++){
 			if(CurrentBoard.getCured(i)){
-				score += 200;
+				score += 2000;
 			}
 		}
 
@@ -453,7 +484,6 @@ public class Client
 			}
 		}
 
-		//TODO FTIAKSTO NOOBA
 		String[] BestRSlocations = {"Instabul", "Shanghai", "Sao Paulo", "Chennai"};
 		//IS OP. EXPERT AND CITY WITH RS, GO EVERYWHERE
 		if(CurrentBoard.getRoleOf(playerID).equals("Operations Expert") & myCurrentCityObj.getHasReseachStation()){
@@ -468,10 +498,10 @@ public class Client
 					Moves.add(tempBoard);
 				}
 			}
-			//ADD CITIES WITH 3 CUBES
+			//ADD CITIES WITH 2+ CUBES
 			for(int i=0; i<CurrentBoard.getCitiesCount(); i++) {
 				City cityToGo = CurrentBoard.searchForCity(i);
-				if (cityToGo.getMaxCube() == 3) {
+				if (cityToGo.getMaxCube() >= 2) {
 					tempBoard = copyBoard(CurrentBoard);
 					assert tempBoard != null;
 					tempBoard.operationsExpertTravel(playerID, cityToGo.getName(), Hand.get(0));
@@ -485,7 +515,7 @@ public class Client
 		if (currentCityAtHand) {
 			for (int i = 0; i < CurrentBoard.getCitiesCount(); i++) {
 				City tempCity = CurrentBoard.searchForCity(i);
-				if (tempCity.getMaxCube() == 3 | tempCity.getHasReseachStation()) {
+				if (tempCity.getMaxCube() >= 2 | tempCity.getHasReseachStation()) {
 					tempBoard = copyBoard(CurrentBoard);
 					assert tempBoard != null;
 					tempBoard.charterFlight(playerID, tempCity.getName());
@@ -498,10 +528,14 @@ public class Client
 		//CURE A DISEASE
 		tempBoard = copyBoard(CurrentBoard);
 		assert tempBoard != null;
-		if(tempBoard.cureDisease(playerID, myCurrentCityObj.getColour())){
-			tempBoard.setActions(PrevActions+toTextCureDisease(playerID, myCurrentCityObj.getColour()), playerID);
-			Moves.add(tempBoard);
+		String[] colors = {"Black", "Yellow", "Blue", "Red"};
+		for (int i=0; i<4; i++) {
+			if(tempBoard.cureDisease(playerID, colors[i])){
+				tempBoard.setActions(PrevActions+toTextCureDisease(playerID, colors[i]), playerID);
+				Moves.add(tempBoard);
+			}
 		}
+
 
 		//TREAT A DISEASE
 		tempBoard = copyBoard(CurrentBoard);
@@ -525,6 +559,36 @@ public class Client
 	public static ArrayList<Board> sortPossibleMoves(ArrayList<Board> moves) {
 		ArrayList<Board> sorted = (ArrayList<Board>) moves.clone();
 		sorted.sort(BoardScoreComp);
+
+		return sorted;
+	}
+
+	public static Comparator<Board> BoardLookAheadComp = (s1, s2) -> {
+		ArrayList<Board> children_s1 = getPossibleMoves(s1.getWhoIsPlaying(), s1);
+		int s1_best = Integer.MIN_VALUE;
+		ArrayList<Board> children_s2 = getPossibleMoves(s2.getWhoIsPlaying(), s2);
+		int s2_best = Integer.MIN_VALUE;
+
+		int eval;
+		for (Board board : children_s1) {
+			eval = evaluatePosition(s1.getWhoIsPlaying(), board);
+			if (eval > s1_best)
+				s1_best = eval;
+		}
+
+		for (Board board : children_s2) {
+			eval = evaluatePosition(s2.getWhoIsPlaying(), board);
+			if (eval > s2_best)
+				s2_best = eval;
+		}
+
+		return s2_best - s1_best;
+	};
+
+
+	public static ArrayList<Board> sortPossibleMovesLookAhead(ArrayList<Board> moves) {
+		ArrayList<Board> sorted = (ArrayList<Board>) moves.clone();
+		sorted.sort(BoardLookAheadComp);
 
 		return sorted;
 	}
