@@ -85,7 +85,8 @@ public class Client
 								System.exit(0);
 							}
 
-                        	String myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
+							assert myBoard != null;
+							String myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
                         	City myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
 
                         	ArrayList<String> myHand = myBoard.getHandOf(myPlayerID);
@@ -119,29 +120,40 @@ public class Client
 
                         	// ADD YOUR CODE FROM HERE AND ON!!
 
-							String finalMove = "";
-							if (myBoard.getWhoIsPlaying() == myPlayerID) {
+							String msgToSend = "";
+							if (myBoard.getWhoIsPlaying() == myPlayerID) { //I AM PLAYING. GENERATE MOVE AND CHECK RECOMMENDATIONS
 								myBoard.setActions("", myPlayerID);
 								Board bestBoard = bestFourMovesLookAhead(myPlayerID, myBoard, 1);
-								finalMove = bestBoard.getActions(myPlayerID);
 
+								msgToSend = bestBoard.getActions(myPlayerID);
+								int moveID = myPlayerID;
+								int bestScore = evaluatePosition(myPlayerID, bestBoard);
 
-								myBoard = copyBoard(bestBoard);
+								for (int i=0; i<3 & i!=myPlayerID; i++){
+									Board curr_board = executeRecommendation(myBoard.getActions(i), myBoard);
+									int curr_score = evaluatePosition(myPlayerID, curr_board);
+									if(curr_score > bestScore){
+										bestScore = curr_score;
+										msgToSend = myBoard.getActions(i);
+										moveID = i;
+									}
+								}
+								if (moveID == myPlayerID){
+									System.out.println("Declined all recommendations. I chose my Move");
+								}
+								else{
+									System.out.println("Accepted recommended move by player("+moveID+").");
+								}
+
+							}
+							else{ //NOT THE ONE WHO IS PLAYING. GENERATE RECOMMENDATION
+								myBoard.setActions("", myBoard.getWhoIsPlaying());
+								Board bestBoard = bestFourRecommend(myBoard.getWhoIsPlaying(), myBoard, 1);
+
+								msgToSend = "#C," + myPlayerID + "," + bestBoard.getActions(myBoard.getWhoIsPlaying());
 							}
 
 
-                        	// UP TO HERE!! DON'T FORGET TO EDIT THE "msgToSend"
-
-                        	// Message type
-                        	// toTextShuttleFlight(0,Atlanta)+"#"+etc
-                        	String msgToSend;
-							assert myBoard != null;
-							if (myBoard.getWhoIsPlaying() == myPlayerID)
-                        		msgToSend = finalMove;
-
-                        		//msgToSend = "AP,"+myPlayerID+"#AP,"+myPlayerID+"#AP,"+myPlayerID+"#C,"+myPlayerID+",This was my action#AP,"+myPlayerID+"#C,"+myPlayerID+",This should not be printed..";//"Action";
-                            else
-                        		msgToSend = "#C,"+myPlayerID+",This was my recommendation"; //"Recommendation"
 
                         	// NO EDIT FROM HERE AND ON (EXEPT FUNCTIONS OUTSIDE OF MAIN() OF COURSE)
 
@@ -151,7 +163,7 @@ public class Client
                         	if (!msgToSend.equals(""))
                         		msgToSend = msgToSend.substring(1); // Removing the initial delimeter
                         	dos.writeObject(msgToSend);
-                        	System.out.println(myUsername + " : I've just sent my " + msgToSend);
+                        	System.out.println(myUsername + " : I've just sent :" + msgToSend);
                         	currentBoard[0].setTalkedForThisTurn(true, myPlayerID);
                         }
                     } catch (IOException e) {
@@ -206,6 +218,48 @@ public class Client
     }
 
 	// ============================== OUR FUNCTIONS ==============================
+
+	public static Board executeRecommendation(String recommendation, Board b){
+		Board board = copyBoard(b);
+		assert board != null;
+		String delimiterActions = "#";
+		String delimiterVariables = ",";
+		String[] actions;
+		String[] variables;
+		int actionCounter = 0;
+		actions = recommendation.split(delimiterActions);
+
+		for (String action : actions) {
+			variables = action.split(delimiterVariables);
+			if (variables[0].equals("DT")) {
+				board.driveTo(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("DF")) {
+				board.directFlight(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("CF")) {
+				board.charterFlight(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("SF")) {
+				board.shuttleFlight(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("BRS")) {
+				board.buildRS(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("TD")) {
+				board.treatDisease(Integer.parseInt(variables[1]), variables[2], variables[3]); actionCounter++;
+			} else if (variables[0].equals("CD1")) {
+				board.cureDisease(Integer.parseInt(variables[1]), variables[2]); actionCounter++;
+			} else if (variables[0].equals("CD2")) {
+				board.cureDisease(Integer.parseInt(variables[1]), variables[2], variables[3], variables[4], variables[5], variables[6]); actionCounter++;
+			} else if (variables[0].equals("AP")) {
+				board.actionPass(Integer.parseInt(variables[1])); actionCounter++;
+			} else if (variables[0].equals("OET")) {
+				board.operationsExpertTravel(Integer.parseInt(variables[1]), variables[2], variables[3]); actionCounter++;
+			}
+			if (actionCounter >= 4) {
+				break;
+			}
+		}
+		return board;
+	}
+
+
 
 	public static Board SimulateNextRound(Board currentBoard){
 		Board myBoard = copyBoard(currentBoard);
@@ -296,7 +350,7 @@ public class Client
 	}
 
 	public static Board bestFourMovesLookAhead(int myPlayerID, Board currBoard, int depth){
-		if (depth == 4 | currBoard.checkIfWon()){
+		if (depth == 5 | currBoard.checkIfWon()){
 			return copyBoard(currBoard);
 		}
 
@@ -305,8 +359,16 @@ public class Client
 		ArrayList<Board> children = getPossibleMoves(myPlayerID, temp);
 		int children_size = children.size();
 
-		ArrayList<Board> sorted = sortPossibleMovesLookAhead(children);
-		int sorted_size = children_size/(4-depth);
+		ArrayList<Board> sorted;
+		int sorted_size;
+		if(depth < 4) {
+			sorted = sortPossibleMovesLookAhead(children);
+			sorted_size = children_size / (5 - depth);
+		}
+		else{
+			sorted = sortPossibleMoves(children);
+			sorted_size = children_size;
+		}
 
 		int[] childScores = new int[sorted_size];
 		Board[] children_new = new Board[sorted_size];
@@ -346,7 +408,7 @@ public class Client
 			case "Operations Expert":
 				//CHECK RS NUMBER
 				int RScount = CurrentBoard.getResearchStationsBuild();
-				score += RScount * 70;
+				score += RScount * 400;
 				break;
 			case "Quarantine Specialist":
 				//BETTER SCORE IF HE PROTECTS A LOT OF INFECTED CITIES
@@ -367,14 +429,18 @@ public class Client
 			else if(cards > 2){
 				score += 450;
 			}
-			score += CurrentBoard.getCubesLeft(i);
 		}
 
 		//THE MORE CUBES LEFT THE BETTER
 		for (int i=0; i<4; i++) {
-			score += 100*CurrentBoard.getCubesLeft(i);
+			if (CurrentBoard.getCured(i)){ //BIAS IF DISEASE IS CURED
+				score += 2000;
+				score += 170*CurrentBoard.getCubesLeft(i);
+			}
+			else{
+				score += 100*CurrentBoard.getCubesLeft(i);
+			}
 		}
-
 
 		String myCurrentCity = CurrentBoard.getPawnsLocations(playerID);
 		City myCurrentCityObj = CurrentBoard.searchForCity(myCurrentCity);
@@ -404,8 +470,91 @@ public class Client
 		//Gets penalty if too close to other players
 		score -= NearbyPawns*45;
 
-		//Research stations built
-		score += (CurrentBoard.getResearchStationsBuild()-1)*500;
+		//ERADICATED DISEASES
+		for(int i=0; i<4; i++){
+			if(CurrentBoard.checkIfEradicated(colors[i])){
+				score += 5000;
+			}
+		}
+
+		//IF WON
+		if(CurrentBoard.checkIfWon())
+			score = Integer.MAX_VALUE;
+
+		return score;
+	}
+
+	public static int evaluateRecommend(int playerID, Board CurrentBoard) {
+		int score = 0;
+		int cubeProtectionScale = 10;
+		int cardsNeededForCure = 4;
+
+		score += 4 - (CurrentBoard.getInfectionRate()); //Infection rate
+
+		score += 100 - CurrentBoard.getOutbreaksCount()*10; //OutBreaks
+
+		String role = CurrentBoard.getRoleOf(playerID); // Do stuff depending on player role
+		switch(role) {
+			case "Medic":
+				//BETTER SCORE BECAUSE HE IS GOING TO CURE NEXT
+				cubeProtectionScale = 40;
+				break;
+			case "Operations Expert":
+				//CHECK RS NUMBER
+				int RScount = CurrentBoard.getResearchStationsBuild();
+				score += RScount * 650;
+				break;
+			case "Quarantine Specialist":
+				//BETTER SCORE IF HE PROTECTS A LOT OF INFECTED CITIES
+				cubeProtectionScale = 25;
+				break;
+			case "Scientist":
+				cubeProtectionScale = 3;
+				cardsNeededForCure = 3;
+				break;
+		}
+
+		String[] colors = {"Black", "Yellow", "Blue", "Red"};
+		for (int i=0; i<4; i++) {
+			//ADD BONUS BASED ON MY CARDS
+			int cards = cardsCounterOfColor(CurrentBoard, playerID, colors[i]);
+			if(cards >= cardsNeededForCure){
+				score += 350;
+			}
+		}
+
+		//THE MORE CUBES LEFT THE BETTER
+		for (int i=0; i<4; i++) {
+			score += 100*CurrentBoard.getCubesLeft(i);
+		}
+
+		String myCurrentCity = CurrentBoard.getPawnsLocations(playerID);
+		City myCurrentCityObj = CurrentBoard.searchForCity(myCurrentCity);
+		int NeighbourCount = myCurrentCityObj.getNeighboursNumber();
+		int NearbyPawns = 0;
+		//Current City Cube Count
+		score += cubeProtectionScale * CurrentBoard.searchForCity(myCurrentCity).getMaxCube();
+
+		for(int n=0; n<3; n++){
+			if(n!=playerID & CurrentBoard.getPawnsLocations(n).equals(myCurrentCity)){
+				NearbyPawns++;
+			}
+		}
+
+		//Nearby Cities Cube Count
+		for (int i=0; i<NeighbourCount; i++) {
+			String NeighbourName = myCurrentCityObj.getNeighbour(i);
+			City NeighbourCity = CurrentBoard.searchForCity(NeighbourName);
+			score += cubeProtectionScale * NeighbourCity.getMaxCube();
+			for(int n=0; n<3; n++){
+				if(n!=playerID & CurrentBoard.getPawnsLocations(n).equals(NeighbourName)){
+					NearbyPawns++;
+				}
+			}
+		}
+
+		//Gets penalty if too close to other players
+		score -= NearbyPawns*80;
 
 		//CURED DISEASES
 		for(int i=0; i<4; i++){
@@ -419,6 +568,40 @@ public class Client
 			score = Integer.MAX_VALUE;
 
 		return score;
+	}
+
+
+	public static Board bestFourRecommend(int myPlayerID, Board currBoard, int depth){
+		if (depth == 5 | currBoard.checkIfWon()){
+			return copyBoard(currBoard);
+		}
+
+		Board temp = copyBoard(currBoard);
+		assert temp != null;
+		ArrayList<Board> children = getPossibleMoves(myPlayerID, temp);
+		int children_size = children.size();
+
+		ArrayList<Board> sorted = sortRecommend(children);
+		int sorted_size = children_size/(5-depth);
+
+		int[] childScores = new int[sorted_size];
+		Board[] children_new = new Board[sorted_size];
+
+		for (int i=0; i<sorted_size; i++){
+			Board child = bestFourRecommend(myPlayerID, sorted.get(i), depth+1);
+			childScores[i] = evaluateRecommend(myPlayerID, child);
+			children_new[i] = copyBoard(child);
+		}
+
+		int max = Integer.MIN_VALUE;
+		Board best_child = null;
+		for (int i=0; i<sorted_size; i++){
+			if( childScores[i] >= max ){
+				max = childScores[i];
+				best_child = children_new[i];
+			}
+		}
+		return best_child;
 	}
 
 
@@ -472,7 +655,7 @@ public class Client
 				Moves.add(tempBoard);
 			}
 		}
-		//
+
 		//IF Operations Expert, AND IN APPROPRIATE CITY BUILD RS
 		if(CurrentBoard.getRoleOf(playerID).equals("Operations Expert")){
 			if(myCurrentCity.equals("Instabul") | myCurrentCity.equals("Shanghai") | myCurrentCity.equals("Sao Paulo") | myCurrentCity.equals("Chennai")){
@@ -546,6 +729,21 @@ public class Client
 		}
 
 		return Moves;
+	}
+
+	public static Comparator<Board> RecommendComp = (s1, s2) -> {
+		int score1 = evaluatePosition(s1.getWhoIsPlaying(), s1);
+		int score2 = evaluatePosition(s2.getWhoIsPlaying(), s2);
+
+		return score2 - score1;
+	};
+
+
+	public static ArrayList<Board> sortRecommend(ArrayList<Board> moves) {
+		ArrayList<Board> sorted = (ArrayList<Board>) moves.clone();
+		sorted.sort(RecommendComp);
+
+		return sorted;
 	}
 
 	public static Comparator<Board> BoardScoreComp = (s1, s2) -> {
