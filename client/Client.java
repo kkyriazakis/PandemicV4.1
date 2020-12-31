@@ -114,10 +114,6 @@ public class Client
                         	for (int i = 0 ; i < 4 ; i++)
                         		System.out.println(myBoard.getColors(i) + " cards count: " + myColorCount[i]);
 
-                        	// Printing out distance map from current city
-                        	//System.out.println("\nDistance map from " + myCurrentCity);
-                        	//printDistanceMap(distanceMap);
-
                         	// ADD YOUR CODE FROM HERE AND ON!!
 
 							String msgToSend = "";
@@ -144,7 +140,6 @@ public class Client
 								else{
 									System.out.println("Accepted recommended move by player("+moveID+").");
 								}
-
 							}
 							else{ //NOT THE ONE WHO IS PLAYING. GENERATE RECOMMENDATION
 								myBoard.setActions("", myBoard.getWhoIsPlaying());
@@ -421,13 +416,14 @@ public class Client
 
 		String[] colors = {"Black", "Yellow", "Blue", "Red"};
 		for (int i=0; i<4; i++) {
-			//ADD BONUS BASED ON MY CARDS
-			int cards = cardsCounterOfColor(CurrentBoard, playerID, colors[i]);
-			if(cards == 2){
-				score += 240;
-			}
-			else if(cards > 2){
-				score += 450;
+			//ADD BONUS BASED ON MY CARDS IF COLOR IS NOT CURED
+			if (!CurrentBoard.getCured(i)) {
+				int cards = cardsCounterOfColor(CurrentBoard, playerID, colors[i]);
+				if (cards == 2) {
+					score += 240;
+				} else if (cards > 2) {
+					score += 450;
+				}
 			}
 		}
 
@@ -435,7 +431,7 @@ public class Client
 		for (int i=0; i<4; i++) {
 			if (CurrentBoard.getCured(i)){ //BIAS IF DISEASE IS CURED
 				score += 2000;
-				score += 170*CurrentBoard.getCubesLeft(i);
+				score += 70*CurrentBoard.getCubesLeft(i);
 			}
 			else{
 				score += 100*CurrentBoard.getCubesLeft(i);
@@ -657,17 +653,20 @@ public class Client
 		}
 
 		//IF Operations Expert, AND IN APPROPRIATE CITY BUILD RS
+		String[] BestRSlocations = {"Atlanta","Instabul", "Shanghai", "Sao Paulo", "Chennai","Hong Kong", "Bogota"};
 		if(CurrentBoard.getRoleOf(playerID).equals("Operations Expert")){
-			if(myCurrentCity.equals("Instabul") | myCurrentCity.equals("Shanghai") | myCurrentCity.equals("Sao Paulo") | myCurrentCity.equals("Chennai")){
+			for(String rs : BestRSlocations){
 				tempBoard = copyBoard(CurrentBoard);
 				assert tempBoard != null;
-				tempBoard.buildRS(playerID, myCurrentCity);
-				tempBoard.setActions(PrevActions+toTextBuildRS(playerID, myCurrentCity), playerID);
-				Moves.add(tempBoard);
+				if (!tempBoard.getRSLocations().contains(myCurrentCity) & rs.equals(myCurrentCity)) {
+					if (tempBoard.buildRS(playerID, myCurrentCity)) {
+						tempBoard.setActions(PrevActions + toTextBuildRS(playerID, myCurrentCity), playerID);
+						Moves.add(tempBoard);
+					}
+				}
 			}
 		}
 
-		String[] BestRSlocations = {"Instabul", "Shanghai", "Sao Paulo", "Chennai"};
 		//IS OP. EXPERT AND CITY WITH RS, GO EVERYWHERE
 		if(CurrentBoard.getRoleOf(playerID).equals("Operations Expert") & myCurrentCityObj.getHasReseachStation()){
 			//ADD BEST RS LOCATIONS THAT DONT CURRENTLY HAVE RS
@@ -778,6 +777,8 @@ public class Client
 			eval = evaluatePosition(s2.getWhoIsPlaying(), board);
 			if (eval > s2_best)
 				s2_best = eval;
+			if (eval > s1_best)
+				return eval;
 		}
 
 		return s2_best - s1_best;

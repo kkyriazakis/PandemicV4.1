@@ -145,6 +145,9 @@ public class Server
 		{
 			System.out.println("*** This is round " + myBoard.getRound() + "." + myBoard.getWhoIsPlaying() + " ***\n");
 			
+			for (int i = 0 ; i < myBoard.getRSLocations().size() ; i++)
+				System.out.println("RS in city of " + myBoard.getRSLocations().get(i));
+			
 			myBoard.resetCanNotOutbreak();
 			myBoard.printCitiesAndCubes();
 			myBoard.printRemainingCubesAndDiseaseStatus();
@@ -197,7 +200,7 @@ public class Server
 					myBoard.setRound(myBoard.getRound()+1);
 				}	
 			}
-
+			
 			System.out.println("\nPrinting actions of all players...");
 			
 			for (int i = 0 ; i < activePlayers ; i++)

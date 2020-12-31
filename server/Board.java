@@ -308,6 +308,7 @@ public class Board implements Serializable{
 		System.out.println("Disease Status : " + Arrays.toString(status));
 		System.out.println("Outbreak Status: " + outbreaksCount + " outbreaks have already occured (max is " + outbreaksLimit + " outbreaks)");
 		System.out.println("Epidemic Status : " + epidemicCardsLeft + " Epidemic cards left out of " +numberOfEpidemicCards);
+		System.out.println("Research Station:"+RSLocations);
 		
 		System.out.println();
 	}
@@ -761,7 +762,7 @@ public class Board implements Serializable{
 		}
 	}
 	
-	// Shuttle flight to desired city RS->RS
+	// Shuttle flight to desired city
 	public boolean shuttleFlight(int playerID, String destination)
 	{
 		boolean isLegal = false;
@@ -793,15 +794,20 @@ public class Board implements Serializable{
 		else 
 			isLegal = false;
 		
+		if(RSLocations.size() >= RSLimit )
+			isLegal = false;
+		
 		if (isLegal && isOperationsExpert) {
 			System.out.println(usernames[playerID] + " is building an RS in " + cityToBuild + " as the operations expert");
 			RSLocations.add(cityToBuild);
+			searchForCity(cityToBuild).setHasReseachStation(true);
 			return true;
 		}
 		else if (isLegal) {
 			System.out.println(usernames[playerID] + " is building an RS in " + cityToBuild);
 			RSLocations.add(cityToBuild);
 			getHandOf(playerID).remove(cityToBuild);
+			searchForCity(cityToBuild).setHasReseachStation(true);
 			return true;
 		}
 		else {
@@ -817,6 +823,7 @@ public class Board implements Serializable{
 		{
 			System.out.println(usernames[playerID] + " is removing the Reseach Station from " + cityToRemove);
 			manualRemoveResearchStation(cityToRemove);
+			searchForCity(cityToRemove).setHasReseachStation(false);
 			return true;
 		}
 		else 
