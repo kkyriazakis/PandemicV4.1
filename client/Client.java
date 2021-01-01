@@ -3,7 +3,6 @@ package PLH512.client;
 import java.io.*; 
 import java.net.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
@@ -13,7 +12,7 @@ import PLH512.server.City;
 public class Client  
 {
     final static int ServerPort = 64240;
-    final static String username = "myName";
+    final static String username = "Kyriazakis-Simos";
 
     public static void main(String[] args) throws UnknownHostException, IOException, ClassNotFoundException
     { 
@@ -87,7 +86,6 @@ public class Client
 
 							assert myBoard != null;
 							String myCurrentCity = myBoard.getPawnsLocations(myPlayerID);
-                        	City myCurrentCityObj = myBoard.searchForCity(myCurrentCity);
 
                         	ArrayList<String> myHand = myBoard.getHandOf(myPlayerID);
 
@@ -98,12 +96,6 @@ public class Client
 
                         	ArrayList<citiesWithDistancesObj> distanceMap = new ArrayList<citiesWithDistancesObj>();
                        		distanceMap = buildDistanceMap(myBoard, myCurrentCity, distanceMap);
-
-
-                        	StringBuilder myAction = new StringBuilder();
-                        	String mySuggestion = "";
-
-                        	int myActionCounter = 0;
 
                         	// Printing out my current hand
                         	System.out.println("\nMy current hand...");
@@ -390,7 +382,7 @@ public class Client
 		int score = 0;
 		int cubeProtectionScale = 10;
 
-		score += 4 - (CurrentBoard.getInfectionRate()); //Infection rate
+		score += 100 - (CurrentBoard.getInfectionRate()*10); //Infection rate
 
 		score += 100 - CurrentBoard.getOutbreaksCount()*10; //OutBreaks
 
